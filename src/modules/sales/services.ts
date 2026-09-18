@@ -13,6 +13,53 @@ export interface SaleResult {
   invoiceId: string | null;
 }
 
+/** Minimal shape of the transaction client used for invoice numbering. */
+type InvoiceNumberClient = {
+  invoice: {
+    findUnique(args: {
+      where: { invoiceNumber: string };
+      select: { id: true };
+    }): Promise<{ id: string } | null>;
+  };
+};
+
+const INVOICE_NUMBER_ATTEMPTS = 10;
+
+/**
+ * Build an invoice number of the form `<prefix>-YYYY-MM-DD-NNNNNN`.
+ *
+ * `Invoice.invoiceNumber` is unique, so a blind random code occasionally
+ * collided and aborted the whole sale with an opaque unique-constraint error.
+ * Probe for a free number first and fall back to a timestamp-suffixed value,
+ * which cannot realistically collide.
+ */
+async function generateUniqueInvoiceNumber(
+  tx: InvoiceNumberClient,
+  prefix: string
+): Promise<string> {
+  const dateStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+  for (let attempt = 0; attempt < INVOICE_NUMBER_ATTEMPTS; attempt++) {
+    const code = Math.floor(Math.random() * 900000) + 100000; // 100000-999999
+    const candidate = `${prefix}-${dateStr}-${code}`;
+
+    const existing = await tx.invoice.findUnique({
+      where: { invoiceNumber: candidate },
+      select: { id: true },
+    });
+
+    if (!existing) {
+      return candidate;
+    }
+  }
+
+  logger.warn(
+    `Could not find a free invoice number for "${prefix}" after ${INVOICE_NUMBER_ATTEMPTS} attempts; falling back to a timestamped series`
+  );
+
+  return `${prefix}-${dateStr}-${Date.now()}`;
+}
+
 export class SaleService {
   /**
    * Create a sale and invoice from a finalized draft
@@ -56,35 +103,24 @@ export class SaleService {
     const result = await prisma.$transaction(async (tx) => {
       // Generate invoice number (series) inside transaction
       let invoiceNumber = input.invoiceNumber;
-      
-      if (!invoiceNumber && draft.customerId) {
-        // Fetch customer to get name for series generation
-        const customer = await tx.customer.findUnique({
-          where: { id: draft.customerId },
-          select: { name: true },
-        });
-        
-        if (customer) {
-          // Generate series: customerName-YYYY-MM-DD-RANDOMCODE (6-digit numeric)
-          const now = new Date();
-          const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-          const min = 100000;
-          const max = 999999;
-          const code = Math.floor(Math.random() * (max - min + 1)) + min;
-          const randomCode = code.toString();
-          invoiceNumber = `${customer.name}-${dateStr}-${randomCode}`;
-        }
-      }
-      
-      // Fallback if still no invoice number (for retail without customer)
+
       if (!invoiceNumber) {
-        const now = new Date();
-        const dateStr = now.toISOString().split('T')[0];
-        const min = 100000;
-        const max = 999999;
-        const code = Math.floor(Math.random() * (max - min + 1)) + min;
-        const randomCode = code.toString();
-        invoiceNumber = `INVOICE-${dateStr}-${randomCode}`;
+        // Prefix with the customer name when we have one, otherwise a generic
+        // series for retail sales without a customer.
+        let prefix = 'INVOICE';
+
+        if (draft.customerId) {
+          const customer = await tx.customer.findUnique({
+            where: { id: draft.customerId },
+            select: { name: true },
+          });
+
+          if (customer) {
+            prefix = customer.name;
+          }
+        }
+
+        invoiceNumber = await generateUniqueInvoiceNumber(tx, prefix);
       }
       // Create Sale
       const sale = await tx.sale.create({
@@ -279,6 +315,12 @@ export class SaleService {
                 },
               });
             }
+          } else {
+            // Silently skipping a missing motorcycle used to let the sale
+            // complete with no stock movement at all.
+            throw new Error(
+              `Motorcycle ${motorcycleId} referenced by this sale no longer exists`
+            );
           }
         } else if (item.productId) {
           // Update product stock quantity
@@ -360,6 +402,12 @@ export class SaleService {
                 },
               });
             }
+          } else {
+            // Same reasoning as the motorcycle branch: a sale must never be
+            // recorded against a product that has disappeared.
+            throw new Error(
+              `Product ${item.productId} referenced by this sale no longer exists`
+            );
           }
         }
       }
@@ -377,20 +425,6 @@ export class SaleService {
     });
 
     return result;
-  }
-
-  /**
-   * Generate a unique invoice number (fallback if not provided)
-   * Uses 6-digit numeric code (100000-999999)
-   */
-  private generateInvoiceNumber(): string {
-    const min = 100000;
-    const max = 999999;
-    const code = Math.floor(Math.random() * (max - min + 1)) + min;
-    const randomCode = code.toString();
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-    return `INV-${dateStr}-${randomCode}`;
   }
 }
 

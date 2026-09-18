@@ -1138,7 +1138,7 @@ export function SalesInvoiceForm({ tabId, saleType, locale, invoiceId, onDraftId
       }
     })
     // Stable dependency array - items are accessed via ref to avoid array dependency issues
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [invoiceId, fetchItemProducts, fetchItemMotorcycles])
 
   // Calculate totals

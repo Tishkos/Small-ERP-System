@@ -1,10 +1,13 @@
-# Arbati ERP
+# ERP
 
 Production-grade ERP / Sales & Inventory Management System built with Next.js.
 
+You name the installation during setup: the company name and logo you choose are
+used throughout the app and on every document it prints.
+
 ## Overview
 
-Arbati is a multi-language (Arabic, English, Kurdish) ERP-style web application that manages:
+A multi-language (Arabic, English, Kurdish) ERP-style web application that manages:
 - Products & Categories
 - Motorcycles (dedicated inventory)
 - Sales (Retail Mufrad & Wholesale Jumla)
@@ -12,6 +15,7 @@ Arbati is a multi-language (Arabic, English, Kurdish) ERP-style web application 
 - Customers & Balances
 - Employees & Permissions
 - Draft System (never lose data)
+- Your own company branding (name + logo)
 
 ## Architecture
 
@@ -22,7 +26,7 @@ This application follows **Domain-Driven Design (DDD)** principles with clear la
 - **Domain Layer**: Business Logic, Domain Services
 - **Infrastructure Layer**: Prisma, Database, External Services
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architecture documentation.
+See [ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed architecture documentation.
 
 ## Tech Stack
 
@@ -48,7 +52,7 @@ See [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed architecture documentation
 
 ```bash
 git clone <repository-url>
-cd arbati
+cd Small-ERP-System
 npm install
 ```
 
@@ -62,8 +66,17 @@ cp .env.example .env
 
 Required variables:
 - `DATABASE_URL`: PostgreSQL connection string
-- `AUTH_SECRET`: Random secret (min 32 chars)
+- `AUTH_SECRET`: Random secret (min 32 chars) — signs the session JWT
 - `JWT_SECRET`: Random secret (min 32 chars)
+
+Sign-in is username/email + password. No email is sent and no verification code
+is involved, so SMTP settings are optional.
+
+> **Serving over plain HTTP?** Keep `NEXTAUTH_URL` on `http://...`. The session
+> cookie name is derived from this scheme, and a mismatch signs users straight
+> back out.
+
+Every variable is documented inline in [`.env.example`](./.env.example).
 
 ### 3. Database Setup
 
@@ -74,11 +87,38 @@ npm run db:generate
 # Run migrations
 npm run db:migrate
 
-# (Optional) Seed database
+# Seed an admin user plus sample data (recommended on a fresh install)
 npm run db:seed
 ```
 
-### 4. Development
+The seed creates the company record plus an active administrator. By default
+that account is:
+
+| Username | Password |
+|---|---|
+| `admin` | `admin` |
+
+Because that password ships with the project, the app blocks on a
+non-dismissible **"Choose a new password"** dialog on first sign-in and will not
+let you in until you set a real one. Set `SEED_ADMIN_PASSWORD` in `.env` to pick
+your own up front and skip that prompt.
+
+The seed is safe to re-run: it upserts and never resets an existing password.
+
+### 4. Name your company
+
+Prefer to start clean? Skip `npm run db:seed` and open the app — with no
+accounts yet you land on the **setup wizard**, which asks for:
+
+1. **Company name and logo** — used in the sidebar, on the sign-in screen, in the
+   browser tab and on every printed document. Upload a PNG, JPG or WebP (up to
+   2MB); without one the app draws a monogram from your company initials.
+2. **Your administrator account** — name, username, email and password.
+
+Setup runs once. After that the wizard is closed permanently and the same
+settings live under **Settings → Company** (administrators only).
+
+### 5. Development
 
 ```bash
 npm run dev
@@ -86,7 +126,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-### 5. Using Docker (Alternative)
+### 6. Using Docker (Alternative)
 
 ```bash
 # Start database
@@ -102,28 +142,35 @@ npm run dev
 ## Project Structure
 
 ```
+app/                    # Next.js App Router (routes live at the repo root)
+├── [locale]/           # Locale-prefixed pages: (auth) and (dashboard) groups
+└── api/                # Route handlers
+
 src/
-├── app/              # Next.js App Router pages
-├── modules/          # Domain modules (DDD)
+├── modules/            # Domain modules (DDD)
 │   ├── auth/
-│   ├── products/
-│   ├── sales/
-│   ├── drafts/      # Critical: Draft system
-│   └── ...
-├── components/       # Shared UI components
-├── lib/             # Utilities (db, auth, i18n, etc.)
-└── types/           # TypeScript types
+│   ├── drafts/         # Critical: Draft system (domain, repositories, services)
+│   └── sales/
+├── components/         # Feature components
+│   └── ui/             # shadcn/ui primitives
+├── hooks/              # Shared React hooks
+├── i18n/               # next-intl request config
+└── lib/                # Utilities (db, auth, i18n, logger, pdf, etc.)
 
 prisma/
-└── schema.prisma    # Database schema
+├── schema.prisma       # Database schema
+├── migrations/         # Migration history
+└── seed.ts             # Seed data (npm run db:seed)
 
-messages/            # i18n translations
+messages/               # i18n translations
 ├── ar.json
 ├── en.json
 └── ku.json
+
+docs/                   # All project documentation
 ```
 
-See [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md) for detailed structure.
+See [FOLDER_STRUCTURE.md](./docs/FOLDER_STRUCTURE.md) for detailed structure.
 
 ## Key Features
 
@@ -135,16 +182,38 @@ Drafts are **first-class entities** that persist in the database. They:
 - Can be resumed anytime
 - Convert to Sale + Invoice on finalization
 
-See [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md#draft-lifecycle-design) for details.
+See [IMPLEMENTATION_GUIDE.md](./docs/IMPLEMENTATION_GUIDE.md#draft-lifecycle-design) for details.
 
 ### Authentication & Authorization
 
-- Signup with email approval workflow
-- Role-based access control (RBAC)
-- Granular permissions
+- Username **or** email + password sign-in (no email verification step)
+- Accounts are created by the setup wizard or by an administrator
+- Temporary lockout after 5 failed sign-in attempts
+- Forced password change for accounts still on a shipped default
+- Self-service password change in **Settings**
+- Role-based access control (RBAC) with granular permissions
 - JWT-based sessions
 
-See [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md#authentication--authorization-flow) for details.
+See [IMPLEMENTATION_GUIDE.md](./docs/IMPLEMENTATION_GUIDE.md#authentication--authorization-flow) for details.
+
+### Company Branding
+
+The installation carries your own identity rather than a hardcoded brand:
+
+- Company **name** and **logo** are chosen during setup and stored in the
+  database, so changing them needs no redeploy.
+- Both appear in the sidebar, on the sign-in and setup screens, in the browser
+  tab title, and on generated PDFs (price lists, invoices).
+- No logo? The app renders a clean monogram from the company initials, so there
+  is never a broken-image placeholder.
+- Logos are uploaded to `public/uploads/branding/` and served through
+  `/api/serve`, which is what makes a newly uploaded logo appear immediately in
+  a Docker deployment.
+- Accepted formats are PNG, JPG and WebP (max 2MB). SVG is rejected on purpose:
+  it is served as `image/svg+xml` and can carry script, which would make the
+  logo field a stored-XSS vector.
+
+Administrators can change either at any time under **Settings → Company**.
 
 ### Internationalization (i18n)
 
@@ -153,7 +222,7 @@ See [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md#authentication--authoriz
 - Direction-aware layouts
 - Printable invoices in all languages
 
-See [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md#i18n-strategy) for details.
+See [IMPLEMENTATION_GUIDE.md](./docs/IMPLEMENTATION_GUIDE.md#i18n-strategy) for details.
 
 ## Available Scripts
 
@@ -295,7 +364,8 @@ JWT_SECRET=your_jwt_secret_min_32_chars_long
 NEXTAUTH_URL=https://yourdomain.com
 NEXT_PUBLIC_APP_URL=https://yourdomain.com
 
-# Email (SMTP) - Optional but recommended
+# Email (SMTP) - Optional. Sign-in never sends email; these are only used if
+# you turn on notifications.
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
@@ -593,9 +663,14 @@ The backup includes **everything**:
 
 ## Documentation
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - System architecture
-- [FOLDER_STRUCTURE.md](./FOLDER_STRUCTURE.md) - Project structure
-- [IMPLEMENTATION_GUIDE.md](./IMPLEMENTATION_GUIDE.md) - Implementation details
+All documentation lives in [`docs/`](./docs/README.md). Most-used entry points:
+
+- [QUICK_START.md](./docs/QUICK_START.md) - Clone to running app
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - System architecture
+- [FOLDER_STRUCTURE.md](./docs/FOLDER_STRUCTURE.md) - Project structure
+- [IMPLEMENTATION_GUIDE.md](./docs/IMPLEMENTATION_GUIDE.md) - Implementation details
+- [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) - Common setup and deploy failures
+- [DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Docker and VPS deployment
 
 ## Contributing
 
@@ -609,7 +684,7 @@ This is a production system. Follow these guidelines:
 
 ## License
 
-Proprietary - Arbati Company
+Proprietary
 
 ## Support
 

@@ -11,13 +11,16 @@ export function FontSizeProvider() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedFontSize = localStorage.getItem('app-font-size');
-      const fontSize = savedFontSize ? parseInt(savedFontSize) : 90;
-      
+      const parsed = savedFontSize ? parseInt(savedFontSize, 10) : NaN;
+      // A missing or corrupt value must not become `font-size: NaN%`, which
+      // the browser drops on the floor and leaves the app at an unexpected size.
+      const fontSize = Number.isFinite(parsed) ? parsed : 90;
+
       // Apply font size immediately
       document.documentElement.style.fontSize = `${fontSize}%`;
-      
-      // If no saved value exists, save the default
-      if (!savedFontSize) {
+
+      // If there was no usable saved value, persist the default
+      if (!Number.isFinite(parsed)) {
         localStorage.setItem('app-font-size', '90');
       }
     }

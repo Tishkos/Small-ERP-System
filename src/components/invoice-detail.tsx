@@ -1454,7 +1454,7 @@ export function InvoiceDetail({ invoice, locale }: InvoiceDetailProps) {
       }
       
       let cellX = margin
-      let cellY = currentY
+      const cellY = currentY
       
       // No column
       doc.rect(cellX, cellY, 10, rowHeight, 'FD')

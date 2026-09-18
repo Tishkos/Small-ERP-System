@@ -13,6 +13,14 @@ import { logger } from '@/lib/logger';
 // Validation schemas
 const signupSchema = z.object({
   email: z.string().email('Invalid email address'),
+  // Optional short login name; sign-in accepts either this or the email.
+  username: z
+    .string()
+    .regex(
+      /^[a-z0-9._-]{3,32}$/,
+      'Username must be 3-32 characters: lowercase letters, numbers, dots, dashes or underscores'
+    )
+    .optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   phone: z.string().optional(),
@@ -28,15 +36,24 @@ export async function signupAction(input: SignupInput) {
     // Validate input
     const validated = signupSchema.parse(input);
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email: validated.email },
+    const email = validated.email.toLowerCase();
+    const username = validated.username?.toLowerCase();
+
+    // Check if the email or username is already taken
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [{ email }, ...(username ? [{ username }] : [])],
+      },
+      select: { email: true },
     });
 
     if (existingUser) {
       return {
         success: false,
-        error: 'Email already registered',
+        error:
+          existingUser.email === email
+            ? 'Email already registered'
+            : 'Username already taken',
       };
     }
 
@@ -46,7 +63,8 @@ export async function signupAction(input: SignupInput) {
     // Create user with PENDING status
     const user = await prisma.user.create({
       data: {
-        email: validated.email,
+        email,
+        username,
         passwordHash,
         name: validated.name,
         phone: validated.phone,
@@ -56,8 +74,6 @@ export async function signupAction(input: SignupInput) {
     });
 
     logger.info('User signed up', undefined, { userId: user.id, email: user.email });
-
-    // TODO: Send approval email to developer/admin
 
     return {
       success: true,

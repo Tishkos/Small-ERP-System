@@ -31,12 +31,20 @@ enum UserRole {
 model User {
   id            String      @id @default(cuid())
   email         String      @unique
+  username      String?     @unique // Optional short login name (e.g. "admin")
   passwordHash  String      // bcrypt hashed
   name          String
   phone         String?
   image         String?     // Profile picture URL
   status        UserStatus  @default(PENDING)
   role          UserRole    @default(VIEWER)
+
+  // Force a password change on next sign-in (used for seeded default accounts)
+  mustChangePassword Boolean @default(false)
+
+  // Brute-force protection for password sign-in
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
   
   // Audit fields
   createdAt     DateTime    @default(now())
@@ -64,6 +72,7 @@ model User {
   createdActivities   Activity[]     @relation("ActivityCreatedBy")
   
   @@index([email])
+  @@index([username])
   @@index([status])
   @@index([role])
   @@map("users")
@@ -805,22 +814,19 @@ model Activity {
 }
 
 // ============================================================================
-// OTP Tokens (Email Authentication)
+// Company / Branding
 // ============================================================================
 
-model OtpToken {
-  id          String   @id @default(cuid())
-  email       String
-  token       String   // 6-digit code
-  accessToken String?  @unique // Token for accessing OTP page
-  expiresAt   DateTime
-  used        Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  
-  @@index([email])
-  @@index([token])
-  @@index([accessToken])
-  @@index([expiresAt])
-  @@map("otp_tokens")
-}
+// Single-row table holding the installation's own identity: the company name
+// and logo chosen during setup. Kept in the database (not env vars) so an admin
+// can rebrand from the Settings page without a redeploy.
+model CompanySettings {
+  id        String   @id @default("default") // Always the single row "default"
+  name      String
+  logo      String?  // Uploaded logo path, e.g. /uploads/branding/logo.png
 
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("company_settings")
+}

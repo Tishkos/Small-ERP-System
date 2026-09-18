@@ -2,6 +2,9 @@ node_modules
 .next
 .env
 .env.*
+# .env.example carries no secrets and must be committed; without this
+# negation the `.env.*` rule above silently excludes it.
+!.env.example
 dist
 build
 coverage

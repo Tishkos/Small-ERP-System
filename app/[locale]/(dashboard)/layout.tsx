@@ -5,6 +5,7 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
+import { ForcePasswordChangeDialog } from "@/components/force-password-change-dialog"
 
 export default async function DashboardLayout({
   children,
@@ -34,6 +35,8 @@ export default async function DashboardLayout({
         </div>
       </SidebarInset>
       <Toaster />
+      {/* Blocks the app for accounts still on a default password */}
+      <ForcePasswordChangeDialog />
     </SidebarProvider>
   )
 }

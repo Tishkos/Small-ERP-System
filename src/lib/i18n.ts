@@ -1,27 +1,18 @@
 /**
- * i18n Configuration
- * Internationalization setup for next-intl
+ * i18n helpers
+ *
+ * Client-safe only. The next-intl request configuration lives in
+ * `src/i18n/request.ts` (the path registered in `next.config.ts`); this module
+ * previously exported a second, unused `getRequestConfig` which dragged
+ * `next-intl/server` and `next/navigation` into every client component that
+ * only wanted `getTextDirection`.
  */
 
-import { getRequestConfig } from 'next-intl/server';
-import { notFound } from 'next/navigation';
 import { config } from './config';
 
 // Supported locales
 export const locales = config.i18n.locales;
 export type Locale = (typeof locales)[number];
-
-export default getRequestConfig(async ({ locale }) => {
-  // Validate that the incoming `locale` parameter is valid
-  if (!locales.includes(locale as Locale)) {
-    notFound();
-  }
-
-  return {
-    locale: locale as Locale,
-    messages: (await import(`../../messages/${locale}.json`)).default,
-  };
-});
 
 /**
  * Get text direction for locale
@@ -40,4 +31,3 @@ export function getLocale(locale?: string): Locale {
   }
   return config.i18n.defaultLocale as Locale;
 }
-

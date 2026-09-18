@@ -1,147 +1,91 @@
 /**
  * Forgot Password Page
- * Password recovery page
+ *
+ * Sign-in is password-only and the product sends no verification email, so there
+ * is no self-service reset to offer. This page previously faked one: it waited
+ * 1.5 seconds and then claimed "Email Sent!" without contacting anything, which
+ * left people waiting for a message that was never coming. It now says plainly
+ * that an administrator has to reset the password.
  */
 
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { ArrowLeft, ArrowRight, KeyRound } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { getTextDirection } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loading } from '@/components/ui/loading';
-import { ArrowLeft } from 'lucide-react';
-
-const forgotPasswordSchema = z.object({
-  email: z.string().email('Invalid email address'),
-});
-
-type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { CompanyLogo } from '@/components/company-logo';
+import { useBranding } from '@/components/branding-provider';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const params = useParams();
   const locale = (params?.locale as string) || 'ku';
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const { name: companyName } = useBranding();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<ForgotPasswordFormData>({
-    resolver: zodResolver(forgotPasswordSchema),
-  });
-
-  const onSubmit = async (data: ForgotPasswordFormData) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // TODO: Implement password reset functionality
-      // For now, simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // Simulate success
-      setSuccess(true);
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-      setIsLoading(false);
-    }
-  };
-
-  if (success) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-        <Card className="w-full max-w-md">
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl font-bold text-center text-green-600">
-              Email Sent!
-            </CardTitle>
-            <CardDescription className="text-center">
-              Check your email for password reset instructions
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-center text-sm text-gray-600">
-              If an account with that email exists, we've sent you instructions to reset your password.
-            </p>
-            <div className="pt-4">
-              <Link href={`/${locale}/login`}>
-                <Button variant="outline" className="w-full">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Login
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const fontClass = locale === 'ku' ? 'font-kurdish' : 'font-engar';
+  const direction = getTextDirection(locale as 'ku' | 'en' | 'ar');
+  const BackIcon = direction === 'rtl' ? ArrowRight : ArrowLeft;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Forgot Password</CardTitle>
-          <CardDescription className="text-center">
-            Enter your email address and we'll send you instructions to reset your password
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-                {error}
-              </div>
-            )}
+    <div className="bg-background flex min-h-svh flex-col items-center justify-center p-6 md:p-10">
+      <div className="flex w-full max-w-md flex-col gap-6">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <CompanyLogo size="lg" />
+          <h1 className={cn('text-xl font-bold', fontClass)}>{companyName}</h1>
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                {...register('email')}
-                disabled={isLoading}
-              />
-              {errors.email && (
-                <p className="text-sm text-red-600">{errors.email.message}</p>
-              )}
-            </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className={cn('flex items-center gap-2', fontClass)}>
+              <KeyRound className="size-5" />
+              Password help
+            </CardTitle>
+            <CardDescription className={fontClass}>
+              Passwords are managed inside your organisation.
+            </CardDescription>
+          </CardHeader>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loading className="mr-2" />
-                  Sending...
-                </>
-              ) : (
-                'Send Reset Instructions'
-              )}
-            </Button>
-          </form>
+          <CardContent className={cn('text-muted-foreground space-y-3 text-sm', fontClass)}>
+            <p>
+              This system does not send password reset emails. Ask an
+              administrator to set a new password for your account, then sign in
+              with it and change it from <strong>Settings</strong>.
+            </p>
+            <p>
+              If you can still sign in, you can change your own password at any
+              time from <strong>Settings</strong>.
+            </p>
+          </CardContent>
 
-          <div className="mt-6 text-center">
-            <Link
-              href={`/${locale}/login`}
-              className="inline-flex items-center text-sm text-primary hover:underline"
+          <CardFooter>
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/${locale}/login`)}
+              className={cn('w-full', fontClass)}
             >
-              <ArrowLeft className="mr-1 h-4 w-4" />
-              Back to Login
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+              <BackIcon className="size-4" />
+              Back to sign in
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <p className={cn('text-muted-foreground text-center text-xs', fontClass)}>
+          <Link href={`/${locale}/login`} className="hover:underline">
+            {companyName}
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }
-

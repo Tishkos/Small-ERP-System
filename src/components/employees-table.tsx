@@ -386,9 +386,8 @@ export function EmployeesTable() {
     newRole: '',
   })
 
-  // Check if current user is admin
-  const isAdmin = session?.user?.email === 'admin@arb-groups.com' || 
-                  (session?.user as any)?.role === 'ADMIN'
+  // Check if current user is admin (role-based; see app-sidebar.tsx)
+  const isAdmin = (session?.user as any)?.role === 'ADMIN'
 
   // Fetch users
   const fetchUsers = React.useCallback(async () => {
@@ -725,7 +724,7 @@ export function EmployeesTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>Change User Role</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to change {roleChangeDialog.user?.name}'s role from{' '}
+              Are you sure you want to change {roleChangeDialog.user?.name}&apos;s role from{' '}
               <strong>{roleChangeDialog.user?.role}</strong> to{' '}
               <strong>{roleChangeDialog.newRole}</strong>?
             </AlertDialogDescription>

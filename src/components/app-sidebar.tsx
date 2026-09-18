@@ -23,6 +23,7 @@ import { NavMain } from '@/components/nav-main'
 import { NavSecondary } from '@/components/nav-secondary'
 import { NavUser } from '@/components/nav-user'
 import { HelpDialog } from '@/components/help-dialog'
+import { CompanyLogoWithName } from '@/components/company-logo'
 import {
   Sidebar,
   SidebarContent,
@@ -51,9 +52,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: (session?.user as any)?.image || null,
   }
 
-  // Check if user is admin (admin@arb-groups.com or has ADMIN role)
-  const isAdmin = session?.user?.email === 'admin@arb-groups.com' || 
-                  (session?.user as any)?.role === 'ADMIN' ||
+  // Admin UI is gated on role. The previous hardcoded email check granted this
+  // to one specific address regardless of its actual role.
+  const isAdmin = (session?.user as any)?.role === 'ADMIN' ||
                   (session?.user as any)?.role === 'DEVELOPER'
 
   // Navigation sections with labels
@@ -155,13 +156,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <Link href={`/${locale}/dashboard`} className="flex items-center gap-2">
-                <img 
-                  src="/assets/logo/arbati.png" 
-                  alt="Arbati" 
-                  className="h-8 w-auto dark:brightness-0 dark:invert"
-                />
-                <span className="text-base font-semibold">Arbati</span>
+              <Link href={`/${locale}/dashboard`}>
+                <CompanyLogoWithName />
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

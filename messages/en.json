@@ -5,25 +5,19 @@
     "success": "Success"
   },
   "auth": {
-    "welcome": "Welcome to Arbati",
-    "email": "Email",
-    "login": "Login",
+    "welcome": "Sign in to continue",
+    "identifier": "Username or email",
+    "identifierPlaceholder": "admin or you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "login": "Sign in",
     "signingIn": "Signing in...",
-    "invalidEmail": "Invalid email address",
-    "emailPlaceholder": "Enter your email",
-    "otp": {
-      "title": "Enter verification code",
-      "description": "We sent a 6-digit code to {email}",
-      "verify": "Verify",
-      "verifying": "Verifying...",
-      "resend": "Resend",
-      "didntReceive": "Didn't receive the code?",
-      "resendCountdown": "Cannot resend in {seconds} seconds",
-      "enterComplete": "Please enter the complete 6-digit code",
-      "invalid": "Invalid or expired verification code",
-      "failed": "Failed to verify code. Please try again",
-      "emailNotFound": "Email not found. Please try logging in again"
-    }
+    "missingCredentials": "Enter your username and password",
+    "invalidCredentials": "Invalid username or password",
+    "signInFailed": "Could not sign in. Please try again.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "forgotPasswordHint": "Forgot your password? Ask an administrator to reset it."
   },
   "language": {
     "label": "Language",
@@ -114,8 +108,7 @@
       "usd": "USD",
       "iqd": "IQD",
       "loading": "Loading statistics...",
-      "viewAll": "View All",
-      "noSalesData": "No sales data available"
+      "viewAll": "View All"
     },
     "salesOptions": {
       "wholesaleProduct": {
@@ -148,7 +141,7 @@
       "seriesPlaceholderWholesale": "Will be generated when customer is selected",
       "seriesPlaceholderWholesaleEmpty": "Select a customer to generate series",
       "customer": "Customer",
-      "customerRequired": "Required",
+      "customerRequired": "Customer Required",
       "fetchCustomer": "Fetch Customer",
       "mustSelectExistingCustomer": "Must select existing customer",
       "searchSelectCustomer": "Search and select customer from database",
@@ -185,7 +178,6 @@
       "wholesaleMustSelectFromDatabase": "For wholesale {type} sales, you must select a customer from the database.",
       "noCustomerFoundManual": "No customer found. You can enter a customer name manually.",
       "ok": "OK",
-      "customerRequired": "Customer Required",
       "itemsRequired": "Items Required",
       "validCustomerRequiredForWholesale": "A valid customer from the database is required for wholesale {type} sales. Please select an existing customer from the database.",
       "pleaseAddAtLeastOneItem": "Please add at least one item",
@@ -1051,6 +1043,41 @@
       "title": "Request New Settings",
       "description": "Need a setting that's not available? Contact us to request new features",
       "contactUs": "Contact Us"
+    },
+    "company": {
+      "title": "Company",
+      "description": "The name and logo shown across the app and on printed documents.",
+      "nameLabel": "Company name",
+      "nameHint": "Appears in the sidebar, on the sign-in screen and on every invoice.",
+      "nameRequired": "Enter a company name",
+      "logoLabel": "Logo",
+      "logoChoose": "Choose logo",
+      "logoChange": "Change logo",
+      "logoRemove": "Remove",
+      "logoHint": "PNG, JPG or WebP, up to 2MB. Without a logo your initials are used.",
+      "logoTypeError": "Logo must be a PNG, JPG or WebP image",
+      "logoSizeError": "Logo must be smaller than 2MB",
+      "save": "Save changes",
+      "saving": "Saving...",
+      "saved": "Company details updated",
+      "saveFailed": "Could not save company details"
+    },
+    "security": {
+      "title": "Password",
+      "description": "Change the password you use to sign in.",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "save": "Change password",
+      "saving": "Changing...",
+      "changed": "Password changed",
+      "failed": "Could not change password",
+      "tooShort": "At least {length} characters",
+      "mismatch": "Passwords do not match",
+      "show": "Show",
+      "hide": "Hide",
+      "forcedTitle": "Choose a new password",
+      "forcedDescription": "This account still uses its default password. Set a new one to continue."
     }
   },
   "customers": {
@@ -1137,7 +1164,6 @@
       "attachmentHint": "PDF, DOC, XLS or images (max 10MB each)",
       "imageSize": "Image size must be less than 5MB",
       "fileSize": "File \"{name}\" exceeds 10MB limit",
-      "cancel": "Cancel",
       "create": "Create",
       "update": "Update",
       "creating": "Creating...",
@@ -1264,5 +1290,51 @@
         "nA": "N/A"
       }
     }
+  },
+  "setup": {
+    "progress": "Setup progress",
+    "steps": {
+      "company": "Company",
+      "admin": "Administrator"
+    },
+    "company": {
+      "title": "Name your company",
+      "description": "This name and logo appear across the app and on every document you print.",
+      "nameLabel": "Company name",
+      "namePlaceholder": "Your company name",
+      "nameHint": "You can change this later in Settings.",
+      "logoLabel": "Company logo",
+      "logoChoose": "Choose logo",
+      "logoChange": "Change logo",
+      "logoRemove": "Remove",
+      "logoHint": "PNG, JPG or WebP, up to 2MB. Without a logo your initials are used."
+    },
+    "admin": {
+      "title": "Create your administrator account",
+      "description": "You will use this account to sign in and to add the rest of your team.",
+      "nameLabel": "Your full name",
+      "namePlaceholder": "Jane Doe",
+      "usernameLabel": "Username",
+      "usernameHint": "Used to sign in. Lowercase letters, numbers, . - _",
+      "emailLabel": "Email",
+      "emailHint": "You can sign in with this too.",
+      "passwordLabel": "Password",
+      "confirmPasswordLabel": "Confirm password"
+    },
+    "continue": "Continue",
+    "back": "Back",
+    "finish": "Create account",
+    "creating": "Creating...",
+    "failed": "Setup failed. Please try again.",
+    "companyNameRequired": "Enter a company name",
+    "adminNameRequired": "Enter your name",
+    "usernameInvalid": "Username must be 3-32 characters: lowercase letters, numbers, dots, dashes or underscores",
+    "emailInvalid": "Enter a valid email address",
+    "passwordTooShort": "At least {length} characters",
+    "passwordMismatch": "Passwords do not match",
+    "logoTypeError": "Logo must be a PNG, JPG or WebP image",
+    "logoSizeError": "Logo must be smaller than 2MB",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   }
 }

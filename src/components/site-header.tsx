@@ -8,7 +8,7 @@ import {
   IconMaximize,
   IconMaximizeOff 
 } from '@tabler/icons-react'
-import { NotificationDropdown } from './layout/notification-dropdown'
+import { NotificationDropdown } from './notification-dropdown'
 import { GlobalSearch } from './global-search'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'

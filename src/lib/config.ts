@@ -3,6 +3,24 @@
  * Centralized config with environment variables
  */
 
+const SUPPORTED_LOCALES = ['ku', 'en', 'ar'] as const;
+
+type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
+
+/**
+ * DEFAULT_LOCALE is operator-supplied, so an unsupported value would otherwise
+ * propagate into routing and message loading. Ignore anything we don't ship.
+ */
+function resolveDefaultLocale(): SupportedLocale {
+  const fromEnv = process.env.DEFAULT_LOCALE?.trim();
+
+  if (fromEnv && (SUPPORTED_LOCALES as readonly string[]).includes(fromEnv)) {
+    return fromEnv as SupportedLocale;
+  }
+
+  return 'ku'; // Kurdish is the product default
+}
+
 export const config = {
   // App
   appName: 'Arbati',
@@ -35,8 +53,8 @@ export const config = {
   
   // i18n
   i18n: {
-    defaultLocale: process.env.DEFAULT_LOCALE || 'ku',
-    locales: ['ku', 'en', 'ar'] as const, // Kurdish as default
+    defaultLocale: resolveDefaultLocale(),
+    locales: SUPPORTED_LOCALES, // Kurdish as default
   },
   
   // Features

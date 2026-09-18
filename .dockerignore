@@ -18,6 +18,8 @@ dist
 build
 backups
 data
+# Documentation is not needed inside the runtime image.
+# (DEPLOYMENT.md moved to docs/, which *.md already covers.)
 *.md
+docs
 !README.md
-!DEPLOYMENT.md

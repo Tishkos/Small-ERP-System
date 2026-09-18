@@ -1,12 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter, useParams, usePathname } from 'next/navigation';
+/**
+ * Sign-in form
+ *
+ * Username-or-email plus password. There is no email verification step: the
+ * first administrator is created by the setup wizard, and further accounts by an
+ * administrator.
+ *
+ * Failure messages come from the server and deliberately do not distinguish an
+ * unknown account from a wrong password.
+ */
+
+import { useEffect, useState } from 'react';
+import { useRouter, useParams, usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { signIn } from 'next-auth/react';
 import { getTextDirection } from '@/lib/i18n';
-import { GalleryVerticalEnd } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { CompanyLogo } from '@/components/company-logo';
+import { useBranding } from '@/components/branding-provider';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +35,6 @@ import {
   FieldDescription,
   FieldGroup,
   FieldLabel,
-  FieldError,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Spinner } from '@/components/ui/spinner';
@@ -35,96 +48,100 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
   const router = useRouter();
   const params = useParams();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const locale = (params?.locale as string) || 'ku';
   const t = useTranslations('auth');
   const tLang = useTranslations('language');
+  const { name: companyName } = useBranding();
+
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [email, setEmail] = useState('');
-  const [emailError, setEmailError] = useState<string | null>(null);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  // A brand new installation has no accounts at all, so send the first visitor
+  // to the setup wizard instead of a sign-in form nobody can pass.
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkSetup = async () => {
+      try {
+        const response = await fetch('/api/setup', { cache: 'no-store' });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (!cancelled && data?.initialized === false) {
+          router.replace(`/${locale}/setup`);
+        }
+      } catch {
+        // If the check fails, stay on the sign-in form.
+      }
+    };
+
+    checkSetup();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, router]);
 
   const handleLocaleChange = (newLocale: string) => {
-    // Replace the locale in the current pathname
     const pathWithoutLocale = pathname.replace(/^\/(ku|en|ar)/, '') || '/login';
     router.push(`/${newLocale}${pathWithoutLocale}`);
   };
 
-  const validateEmail = (emailValue: string) => {
-    if (!emailValue || !emailValue.trim()) {
-      return false;
-    }
-    // Allow @arb-groups.com emails or specific admin email
-    const isArbGroupsEmail = emailValue.endsWith('@arb-groups.com');
-    const isAdminEmail = emailValue === 'hamajamalsabr@gmail.com';
-    
-    if (!isArbGroupsEmail && !isAdminEmail) {
-      return false;
-    }
-    return true;
-  };
-
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError(null);
-    setEmailError(null); // Clear previous error
 
- 
-  
-    // Validate email - only show error on submit
-    if (!validateEmail(email)) {
-      setEmailError(t('invalidEmail'));
-      setIsLoading(false);
+    if (!identifier.trim() || !password) {
+      setError(t('missingCredentials'));
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      // Send OTP email
-      const response = await fetch('/api/auth/send-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, locale }),
+      const result = await signIn('credentials', {
+        identifier: identifier.trim(),
+        password,
+        redirect: false,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || t('otp.failed'));
+      if (!result?.ok) {
+        // NextAuth forwards the provider's thrown message here.
+        setError(result?.error || t('invalidCredentials'));
         setIsLoading(false);
         return;
       }
 
-      // Redirect to OTP page with token
-      if (data.token) {
-        router.push(`/${locale}/otp?token=${data.token}`);
-      } else {
-        setError(t('otp.failed'));
-        setIsLoading(false);
-      }
+      const callbackUrl = searchParams.get('callbackUrl');
+      router.push(callbackUrl || `/${locale}/dashboard`);
     } catch (err) {
-      console.error('Error sending OTP:', err);
-      setError(t('otp.failed'));
+      console.error('Error signing in:', err);
+      setError(t('signInFailed'));
       setIsLoading(false);
     }
   };
 
-  // Get font class based on current locale
   const fontClass = locale === 'ku' ? 'font-kurdish' : 'font-engar';
-  // Get text direction based on current locale
   const direction = getTextDirection(locale as 'ku' | 'en' | 'ar');
 
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
-      {/* Language Dropdown - Top Right */}
-      <div className={cn("flex", direction === 'rtl' ? 'justify-start' : 'justify-end')}>
+      {/* Language Dropdown */}
+      <div className={cn('flex', direction === 'rtl' ? 'justify-start' : 'justify-end')}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className={fontClass}>{tLang('label')}</Button>
+            <Button variant="outline" className={fontClass}>
+              {tLang('label')}
+            </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent 
-            className={cn("w-56", fontClass)} 
+          <DropdownMenuContent
+            className={cn('w-56', fontClass)}
             style={{ direction } as React.CSSProperties}
           >
             <DropdownMenuLabel>{tLang('title')}</DropdownMenuLabel>
@@ -155,58 +172,100 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
 
       <form onSubmit={onSubmit}>
         <FieldGroup>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <a
-              href="#"
-              className="flex flex-col items-center gap-2 font-medium"
-              onClick={(e) => {
-                e.preventDefault();
-                router.push(`/${locale}`);
-              }}
-            >
-              <div className="flex size-12 items-center justify-center rounded-md">
-                <img 
-                  src="/assets/logo/arbati.png" 
-                  alt="Arbati" 
-                  className="h-12 w-auto dark:brightness-0 dark:invert"
-                />
-              </div>
-              <span className="sr-only">Arbati</span>
-            </a>
-            <h1 className="text-xl font-bold">{t('welcome')}</h1>
+          <div className="flex flex-col items-center gap-3 text-center">
+            <CompanyLogo size="lg" />
+            <div className="space-y-1">
+              <h1 className={cn('text-xl font-bold', fontClass)}>{companyName}</h1>
+              <p className={cn('text-muted-foreground text-sm', fontClass)}>
+                {t('welcome')}
+              </p>
+            </div>
           </div>
 
-          {error && <FieldError>{error}</FieldError>}
+          {error && (
+            <div
+              role="alert"
+              className={cn(
+                'border-destructive/30 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-sm',
+                fontClass
+              )}
+            >
+              {error}
+            </div>
+          )}
 
           <Field>
-            <FieldLabel htmlFor="email">{t('email')}</FieldLabel>
+            <FieldLabel htmlFor="identifier" className={fontClass}>
+              {t('identifier')}
+            </FieldLabel>
             <Input
-              id="email"
-              type="email"
-              placeholder={t('emailPlaceholder')}
+              id="identifier"
+              name="identifier"
+              type="text"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              dir="ltr"
+              placeholder={t('identifierPlaceholder')}
               required
-              value={email}
+              value={identifier}
               onChange={(e) => {
-                setEmail(e.target.value);
-                // Clear error when user starts typing
-                if (emailError) {
-                  setEmailError(null);
-                }
+                setIdentifier(e.target.value);
+                if (error) setError(null);
               }}
               disabled={isLoading}
-              className={cn(
-                "h-12 text-base",
-                emailError && "border-destructive focus-visible:ring-destructive"
-              )}
-              aria-invalid={emailError ? true : undefined}
+              className="h-12 text-base"
             />
-            {emailError && (
-              <FieldError>{emailError}</FieldError>
-            )}
           </Field>
 
           <Field>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <FieldLabel htmlFor="password" className={fontClass}>
+              {t('password')}
+            </FieldLabel>
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
+                dir="ltr"
+                placeholder={t('passwordPlaceholder')}
+                required
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  if (error) setError(null);
+                }}
+                disabled={isLoading}
+                className={cn('h-12 text-base', direction === 'rtl' ? 'pl-11' : 'pr-11')}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                tabIndex={-1}
+                aria-label={showPassword ? t('hidePassword') : t('showPassword')}
+                onClick={() => setShowPassword((visible) => !visible)}
+                className={cn(
+                  'text-muted-foreground absolute top-1/2 size-8 -translate-y-1/2',
+                  direction === 'rtl' ? 'left-2' : 'right-2'
+                )}
+              >
+                {showPassword ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </Button>
+            </div>
+          </Field>
+
+          <Field>
+            <Button
+              type="submit"
+              className={cn('h-12 w-full text-base', fontClass)}
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Spinner className="size-4" />
@@ -217,9 +276,12 @@ export function LoginForm({ className, ...props }: LoginFormProps) {
               )}
             </Button>
           </Field>
+
+          <FieldDescription className={cn('text-center text-xs', fontClass)}>
+            {t('forgotPasswordHint')}
+          </FieldDescription>
         </FieldGroup>
       </form>
     </div>
   );
 }
-

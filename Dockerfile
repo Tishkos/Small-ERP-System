@@ -2,52 +2,38 @@
 # Multi-stage build for optimal image size
 
 # ============================================================================
-# Stage 1: Dependencies
-# ============================================================================
-FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat python3 make g++ curl
-WORKDIR /app
-
-# Copy package files
-COPY package.json package-lock.json* ./
-RUN npm ci --only=production
-
-# ============================================================================
-# Stage 2: Builder
+# Stage 1: Builder
+# ----------------------------------------------------------------------------
+# A single install of the full dependency tree. The previous version had an
+# extra `deps` stage that ran `npm ci --only=production` and then installed
+# everything again here, doubling install time for no benefit.
 # ============================================================================
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Install build dependencies
-RUN apk add --no-cache python3 make g++
+# node-gyp toolchain, needed by some native dependencies
+RUN apk add --no-cache libc6-compat python3 make g++
 
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
-
-# Copy source files
+# Install dependencies first so this layer is cached across source-only changes
 COPY package.json package-lock.json* ./
-COPY prisma ./prisma
-COPY . .
-
-# Install all dependencies (including devDependencies for build)
 RUN npm ci
 
-# Set environment variables for build
+# Copy source
+COPY . .
+
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Provide dummy DATABASE_URL for build (actual URL comes from runtime env via docker-compose)
-# This is needed because Next.js collects page data during build and some modules require DATABASE_URL
-ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
+# Generate Prisma Client. No DATABASE_URL is needed: prisma.config.ts falls back
+# to a placeholder for schema-only commands, and the app builds its Prisma
+# client lazily, so no dummy connection string has to be baked into the image.
+RUN npx prisma generate
 
-# Generate Prisma Client (use local version from node_modules)
-RUN ./node_modules/.bin/prisma generate
-
-# Build Next.js application
+# Build Next.js application (output: 'standalone')
 RUN npm run build
 
 # ============================================================================
-# Stage 3: Runner (Production)
+# Stage 2: Runner (Production)
 # ============================================================================
 FROM node:20-alpine AS runner
 WORKDIR /app
@@ -66,6 +52,8 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
+
+# Generated Prisma client and query engine (not traced into standalone output)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create directories for file uploads
@@ -80,4 +68,3 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "server.js"]
-

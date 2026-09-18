@@ -26,6 +26,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { getServeUrl } from '@/lib/serve-url'
 import * as React from 'react'
+import { loadCompanyLogoForPdf } from '@/lib/pdf-logo'
 
 type Motorcycle = {
   id: string
@@ -1123,20 +1124,12 @@ async function generatePDF(
   // Header based on headerType (same logic as products)
   if (headerType === 'logo') {
     try {
-      const logoUrl = '/assets/logo/arbati.png'
-      const response = await fetch(logoUrl)
-      const blob = await response.blob()
-      const imgData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onloadend = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsDataURL(blob)
-      })
+      const logo = await loadCompanyLogoForPdf(40, 15)
 
-      const logoWidth = 40
-      const logoHeight = 15
-      doc.addImage(imgData, 'PNG', margin, margin, logoWidth, logoHeight)
-      startY = margin + logoHeight + 10
+      if (logo) {
+        doc.addImage(logo.dataUrl, logo.format, margin, margin, logo.width, logo.height)
+        startY = margin + logo.height + 10
+      }
     } catch (error) {
       console.warn('Could not load logo:', error)
     }
@@ -1147,19 +1140,18 @@ async function generatePDF(
     doc.rect(0, 0, pageWidth, headerHeight, 'F')
     
     try {
-      const logoUrl = '/assets/logo/arbati.png'
-      const response = await fetch(logoUrl)
-      const blob = await response.blob()
-      const imgData = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onloadend = () => resolve(reader.result as string)
-        reader.onerror = reject
-        reader.readAsDataURL(blob)
-      })
+      const logo = await loadCompanyLogoForPdf(50, 18)
 
-      const logoWidth = 50
-      const logoHeight = 18
-      doc.addImage(imgData, 'PNG', margin, (headerHeight - logoHeight) / 2, logoWidth, logoHeight)
+      if (logo) {
+        doc.addImage(
+          logo.dataUrl,
+          logo.format,
+          margin,
+          (headerHeight - logo.height) / 2,
+          logo.width,
+          logo.height
+        )
+      }
     } catch (error) {
       console.warn('Could not load logo:', error)
     }

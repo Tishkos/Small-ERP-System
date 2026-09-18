@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { useTheme } from 'next-themes'
+import { useSession } from 'next-auth/react'
 import { getTextDirection } from '@/lib/i18n'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -19,6 +20,8 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { HelpDialog } from '@/components/help-dialog'
+import { CompanySettingsCard } from '@/components/company-settings-card'
+import { SecuritySettingsCard } from '@/components/security-settings-card'
 import { cn } from '@/lib/utils'
 import { IconSettings, IconMinus, IconPlus, IconMoon, IconSun, IconHelp } from '@tabler/icons-react'
 
@@ -27,6 +30,9 @@ export default function SettingsPage() {
   const locale = (params?.locale as string) || 'ku'
   const t = useTranslations('settings')
   const { theme, setTheme } = useTheme()
+  const { data: session } = useSession()
+  // Company branding is administrator-only; /api/company enforces this too.
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'ADMIN'
   const [mounted, setMounted] = useState(false)
   const fontClass = locale === 'ku' ? 'font-kurdish' : 'font-engar'
   const direction = getTextDirection(locale as 'ku' | 'en' | 'ar')
@@ -35,18 +41,25 @@ export default function SettingsPage() {
   // Font size state (stored in localStorage, default: 90%)
   const [fontSize, setFontSize] = useState(90)
 
-  // Load font size from localStorage on mount
+  // Load font size from localStorage on mount.
+  // `mounted` deliberately flips in an effect: localStorage and the resolved
+  // theme are unavailable during SSR, so the first client pass has to re-render
+  // once before theme-dependent controls can show their real values.
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setMounted(true)
     const savedFontSize = localStorage.getItem('app-font-size')
-    if (savedFontSize) {
-      setFontSize(parseInt(savedFontSize))
+    const parsed = savedFontSize ? parseInt(savedFontSize, 10) : NaN
+
+    if (Number.isFinite(parsed)) {
+      setFontSize(parsed)
     } else {
-      // Set default to 90% if no saved value exists
-      setFontSize(90)
+      // No saved value, or a corrupt one that would otherwise be applied as
+      // `font-size: NaN%` and leave the page unreadable.
       localStorage.setItem('app-font-size', '90')
     }
   }, [])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Apply font size to document root
   useEffect(() => {
@@ -93,6 +106,12 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid gap-6">
+        {/* Company identity - name and logo shown across the app and on prints */}
+        {isAdmin && <CompanySettingsCard />}
+
+        {/* Password */}
+        <SecuritySettingsCard />
+
         {/* Font Size Settings */}
         <Card>
           <CardHeader>

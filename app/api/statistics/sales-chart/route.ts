@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate date range
     const now = new Date()
-    let startDate = new Date()
+    const startDate = new Date()
     
     if (timeRange === '7d') {
       startDate.setDate(now.getDate() - 7)

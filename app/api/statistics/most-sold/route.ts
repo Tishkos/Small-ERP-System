@@ -111,7 +111,7 @@ export async function GET() {
     })
     
     // Convert to array and sort by quantity
-    let mostSoldProducts = Array.from(productMap.entries())
+    const mostSoldProducts = Array.from(productMap.entries())
       .map(([productId, totalQuantity]) => ({
         productId,
         _sum: { quantity: totalQuantity },

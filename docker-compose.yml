@@ -43,6 +43,7 @@ services:
       - SMTP_SECURE=${EMAIL_SECURE:-${SMTP_SECURE:-false}}
       - EMAIL_FROM=${EMAIL_FROM:-noreply@arbati.com}
       - APPROVAL_EMAIL=${APPROVAL_EMAIL:-admin@arbati.com}
+      - DEFAULT_LOCALE=${DEFAULT_LOCALE:-ku}
     ports:
       - "${PORT:-3000}:3000"
     depends_on:

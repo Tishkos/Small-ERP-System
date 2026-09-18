@@ -27,7 +27,10 @@ export async function PUT(
       select: { role: true, email: true },
     })
 
-    if (!currentUser || (currentUser.email !== 'admin@arb-groups.com' && currentUser.role !== 'ADMIN')) {
+    // Authorize on role only. This used to also accept one hardcoded company
+    // email address, which both leaked into the repository and silently granted
+    // role-editing rights to whoever controlled that mailbox.
+    if (!currentUser || currentUser.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Forbidden: Only administrators can update user roles' },
         { status: 403 }

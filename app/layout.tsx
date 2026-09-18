@@ -25,8 +25,11 @@ const engarFont = localFont({
   display: "swap",
 });
 
+// Neutral fallback only. The real, company-specific title is set per request by
+// app/[locale]/layout.tsx; reading the database here would force this layout's
+// static children (e.g. the `/` redirect) to hit the DB during `next build`.
 export const metadata: Metadata = {
-  title: "Arbati ERP",
+  title: "ERP",
   description: "Production-grade ERP / Sales & Inventory Management System",
 };
 

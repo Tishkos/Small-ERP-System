@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     // Try new schema first, fallback to old schema if migration hasn't run
     let motorcycles: any[] = []
     let where: any
-    let orderBy: any = {}
+    const orderBy: any = {}
     let useOldSchema = false
     orderBy[sortBy] = sortOrder
 
